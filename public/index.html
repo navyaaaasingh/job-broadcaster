@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Job Broadcaster</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="wrap">
+  <header class="head">
+    <div class="mark">JB</div>
+    <div>
+      <h1>Job Broadcaster</h1>
+      <p class="sub">Search Adzuna, Reed &amp; Jooble. Pick the jobs. Send one email to your whole list.</p>
+    </div>
+  </header>
+
+  <div class="steps">
+    <span class="step" data-step="1">1. Find jobs</span>
+    <span class="step" data-step="2">2. Select jobs</span>
+    <span class="step" data-step="3">3. Recipients</span>
+    <span class="step" data-step="4">4. Send</span>
+  </div>
+
+  <main class="grid single">
+
+    <section class="card">
+      <h2>1 &middot; 2 — Find &amp; select jobs</h2>
+      <form id="search-form" class="inline-form">
+        <input type="text" name="keywords" placeholder="Keywords — e.g. react developer" />
+        <input type="text" name="location" placeholder="Location — e.g. London" />
+        <button type="submit">Search</button>
+      </form>
+      <p class="hint" id="search-meta">Search to see results here.</p>
+      <ul id="job-results" class="jobs selectable"></ul>
+    </section>
+
+    <section class="card">
+      <h2>3 — Recipients</h2>
+
+      <div class="recipient-add">
+        <input type="email" id="single-email" placeholder="add-one@example.com" />
+        <button id="add-single" class="ghost">Add</button>
+      </div>
+
+      <div class="recipient-bulk">
+        <label>
+          Paste a list <span class="hint">comma or newline separated</span>
+          <textarea id="bulk-emails" rows="3" placeholder="jane@example.com&#10;john@example.com"></textarea>
+        </label>
+        <div class="bulk-actions">
+          <button id="add-bulk" class="ghost">Add pasted list</button>
+          <label class="file-btn">
+            Upload .csv / .txt
+            <input type="file" id="file-upload" accept=".csv,.txt" hidden />
+          </label>
+        </div>
+      </div>
+
+      <p class="hint" id="recipients-meta">No recipients yet.</p>
+      <ul id="recipients-list" class="recipients"></ul>
+    </section>
+
+    <section class="card">
+      <h2>4 — Compose &amp; send</h2>
+      <form id="send-form">
+        <label>
+          Subject <span class="hint">optional — a default is used if blank</span>
+          <input type="text" name="subject" placeholder="This week's openings" />
+        </label>
+        <label>
+          Message <span class="hint">shown above the job list</span>
+          <textarea name="message" rows="3" placeholder="Hi all, here are this week's picks..."></textarea>
+        </label>
+        <button type="submit" id="send-btn">Send to everyone on the list</button>
+        <p class="form-status" id="send-status"></p>
+      </form>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    Everyone on the recipient list gets the exact same email — the same selected jobs, same subject, same message.
+  </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
