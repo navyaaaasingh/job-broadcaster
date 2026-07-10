@@ -15,6 +15,7 @@ const sendStatus = document.getElementById('send-status');
 const sendBtn = document.getElementById('send-btn');
 
 let selectedJobIds = new Set();
+let jobExperience = new Map(); // jobId -> experience requirement text, preserved across re-renders
 
 // ---------- Step 1 & 2: search + select ----------
 
@@ -23,6 +24,7 @@ searchForm.addEventListener('submit', async (e) => {
   const fd = new FormData(searchForm);
   const keywords = fd.get('keywords') || '';
   const location = fd.get('location') || '';
+  const experience = fd.get('experience') || '';
 
   searchMeta.textContent = 'Searching Adzuna, Reed and Jooble…';
   jobResults.innerHTML = '';
@@ -31,7 +33,7 @@ searchForm.addEventListener('submit', async (e) => {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keywords, location }),
+      body: JSON.stringify({ keywords, location, experience }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed.');
@@ -43,6 +45,12 @@ searchForm.addEventListener('submit', async (e) => {
   }
 });
 
+function truncate(text, maxLen) {
+  if (!text) return '';
+  const clean = text.replace(/\s+/g, ' ').trim();
+  return clean.length > maxLen ? clean.slice(0, maxLen).trim() + '…' : clean;
+}
+
 function renderJobResults(jobs) {
   jobResults.innerHTML = '';
   if (jobs.length === 0) {
@@ -52,14 +60,25 @@ function renderJobResults(jobs) {
   for (const job of jobs) {
     const li = document.createElement('li');
     li.className = 'job selectable-job';
+    const savedExperience = jobExperience.get(job.id) || '';
+    const descSnippet = truncate(job.description, 220);
     li.innerHTML = `
       <label class="job-select">
         <input type="checkbox" data-id="${job.id}" ${selectedJobIds.has(job.id) ? 'checked' : ''} />
         <span>
-          <span class="job-title">${job.title}</span><br/>
+          <span class="job-title">${job.title}</span>
+          <a class="job-link" href="${job.url}" target="_blank" rel="noopener">View job ↗</a><br/>
           <span class="job-meta"><span class="job-source">${job.source}</span>${job.company} — ${job.location || 'n/a'}</span>
+          ${descSnippet ? `<p class="job-desc">${descSnippet}</p>` : ''}
         </span>
       </label>
+      <input
+        type="text"
+        class="job-experience"
+        data-id="${job.id}"
+        placeholder="Experience required — e.g. 2-4 yrs (optional)"
+        value="${savedExperience.replace(/"/g, '&quot;')}"
+      />
     `;
     jobResults.appendChild(li);
   }
@@ -67,6 +86,11 @@ function renderJobResults(jobs) {
     box.addEventListener('change', () => {
       if (box.checked) selectedJobIds.add(box.dataset.id);
       else selectedJobIds.delete(box.dataset.id);
+    });
+  });
+  jobResults.querySelectorAll('.job-experience').forEach((input) => {
+    input.addEventListener('input', () => {
+      jobExperience.set(input.dataset.id, input.value);
     });
   });
 }
@@ -173,12 +197,20 @@ sendForm.addEventListener('submit', async (e) => {
   sendStatus.textContent = 'Sending…';
   sendStatus.className = 'form-status';
 
+  // Only send experience notes for jobs that are actually selected.
+  const experience = {};
+  for (const id of jobIds) {
+    const text = jobExperience.get(id);
+    if (text && text.trim()) experience[id] = text.trim();
+  }
+
   try {
     const res = await fetch('/api/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jobIds,
+        experience,
         subject: fd.get('subject') || '',
         message: fd.get('message') || '',
       }),
