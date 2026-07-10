@@ -299,3 +299,8 @@ button.ghost {
   font-size: 12.5px;
   text-align: center;
 }
+.job-experience {
+  margin-top: 8px;
+  font-size: 13px !important;
+  padding: 6px 9px !important;
+}
