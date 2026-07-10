@@ -72,13 +72,7 @@ function renderJobResults(jobs) {
           ${descSnippet ? `<p class="job-desc">${descSnippet}</p>` : ''}
         </span>
       </label>
-      <input
-        type="text"
-        class="job-experience"
-        data-id="${job.id}"
-        placeholder="Experience required — e.g. 2-4 yrs (optional)"
-        value="${savedExperience.replace(/"/g, '&quot;')}"
-      />
+    
     `;
     jobResults.appendChild(li);
   }
