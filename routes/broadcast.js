@@ -10,13 +10,20 @@ const router = express.Router();
 
 /** Step 1: find jobs — search Adzuna + Reed + Jooble, return normalized/deduped results. */
 router.post('/search', async (req, res) => {
-  const { keywords = '', location = '' } = req.body || {};
+  const { keywords = '', location = '', experience = '' } = req.body || {};
+
+  // None of the three APIs expose a dedicated "years of experience" filter,
+  // so the most useful thing we can do with it is fold it into the free-text
+  // keyword search — e.g. "react developer" + "2-3 years" becomes
+  // "react developer 2-3 years", which biases results toward postings that
+  // mention that experience level in their title/description.
+  const searchKeywords = [keywords, experience].filter(Boolean).join(' ').trim();
 
   try {
     const [adzuna, reed, jooble] = await Promise.all([
-      fetchAdzunaJobs({ keywords, location }),
-      fetchReedJobs({ keywords, location }),
-      fetchJoobleJobs({ keywords, location }),
+      fetchAdzunaJobs({ keywords: searchKeywords, location }),
+      fetchReedJobs({ keywords: searchKeywords, location }),
+      fetchJoobleJobs({ keywords: searchKeywords, location }),
     ]);
 
     const all = [...adzuna, ...reed, ...jooble];
@@ -65,13 +72,16 @@ router.delete('/recipients/:email', (req, res) => {
 
 /** Step 2 + 4: selected jobs get sent, as one identical email, to every recipient. */
 router.post('/send', async (req, res) => {
-  const { jobIds = [], subject = '', message = '' } = req.body || {};
+  const { jobIds = [], experience = {}, subject = '', message = '' } = req.body || {};
 
   if (!Array.isArray(jobIds) || jobIds.length === 0) {
     return res.status(400).json({ error: 'Select at least one job to send.' });
   }
 
-  const jobs = getJobsByIds(jobIds);
+  const jobs = getJobsByIds(jobIds).map((job) => ({
+    ...job,
+    experience: experience[job.id] || null,
+  }));
   if (jobs.length === 0) {
     return res.status(400).json({
       error: 'None of the selected jobs were found in cache. Please re-run the search and re-select.',
