@@ -20,7 +20,7 @@
   <div class="steps">
     <span class="step" data-step="1">1. Find jobs</span>
     <span class="step" data-step="2">2. Select jobs</span>
-   <span class="step" data-step="3">3. Recipients</span>
+    <span class="step" data-step="3">3. Recipients</span>
     <span class="step" data-step="4">4. Send</span>
   </div>
 
@@ -31,14 +31,22 @@
       <form id="search-form" class="inline-form">
         <input type="text" name="keywords" placeholder="Keywords — e.g. react developer" />
         <input type="text" name="location" placeholder="Location — e.g. London" />
-        <input type="text" name="experience" placeholder="Experience — e.g. 2-3 years" />
+        <select name="experience">
+          <option value="">Experience — any</option>
+          <option value="0-1 years">0-1 years</option>
+          <option value="1-2 years">1-2 years</option>
+          <option value="2-3 years">2-3 years</option>
+          <option value="3-5 years">3-5 years</option>
+          <option value="5-8 years">5-8 years</option>
+          <option value="8+ years">8+ years</option>
+        </select>
         <button type="submit">Search</button>
       </form>
       <p class="hint" id="search-meta">Search to see results here.</p>
       <ul id="job-results" class="jobs selectable"></ul>
     </section>
 
-   <section class="card">
+    <section class="card">
       <h2>3 — Recipients</h2>
 
       <div class="recipient-add">
