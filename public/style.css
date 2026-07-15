@@ -109,7 +109,12 @@ body {
   display: flex;
   gap: 8px;
 }
-.inline-form input { flex: 1; }
+.inline-form input,
+.inline-form select {
+  flex: 1;
+  min-width: 0;
+}
+.inline-form button { flex-shrink: 0; }
 
 label {
   display: flex;
