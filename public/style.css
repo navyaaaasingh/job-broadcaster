@@ -151,7 +151,17 @@ textarea {
   width: 100%;
 }
 textarea { resize: vertical; }
-select { cursor: pointer; }
+select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%2320261F'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 28px;
+}
 
 input:focus, select:focus, textarea:focus {
   outline: 2px solid var(--signal);
