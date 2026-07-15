@@ -134,6 +134,7 @@ label {
 
 input[type="email"],
 input[type="text"],
+select,
 textarea {
   font-family: -apple-system, sans-serif;
   font-size: 14.5px;
@@ -145,8 +146,9 @@ textarea {
   width: 100%;
 }
 textarea { resize: vertical; }
+select { cursor: pointer; }
 
-input:focus, textarea:focus {
+input:focus, select:focus, textarea:focus {
   outline: 2px solid var(--signal);
   outline-offset: 1px;
 }
