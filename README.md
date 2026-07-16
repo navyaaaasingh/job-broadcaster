@@ -8,6 +8,8 @@ This is deliberately simpler than a "smart matching" system: there's no
 per-user preference matching, no automatic scheduling. You decide what goes
 out, and to whom, every time.
 
+# Demo website:https://job-broadcaster.onrender.com
+
 ## The workflow
 
 1. **Find jobs** — search by keyword and location across all three job APIs at once.
