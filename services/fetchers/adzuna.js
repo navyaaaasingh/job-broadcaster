@@ -18,7 +18,12 @@ async function fetchAdzunaJobs({ keywords, location, page = 1 }) {
       params: {
         app_id: appId,
         app_key: appKey,
-        what: keywords || undefined,
+        // what_and requires every search term to appear, rather than
+        // matching if ANY one term does (which is what the plain `what`
+        // param does) — this cuts down on loosely-related results like a
+        // driving job showing up for an "IT support" search just because
+        // it happens to mention "support" somewhere.
+        what_and: keywords || undefined,
         where: location || undefined,
         results_per_page: 25,
       },
