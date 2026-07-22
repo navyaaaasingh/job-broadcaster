@@ -2,6 +2,7 @@ const searchForm = document.getElementById('search-form');
 const searchMeta = document.getElementById('search-meta');
 const jobResults = document.getElementById('job-results');
 
+const singleNameInput = document.getElementById('single-name');
 const singleEmailInput = document.getElementById('single-email');
 const addSingleBtn = document.getElementById('add-single');
 const bulkEmailsInput = document.getElementById('bulk-emails');
@@ -14,6 +15,8 @@ const sendForm = document.getElementById('send-form');
 const sendStatus = document.getElementById('send-status');
 const sendBtn = document.getElementById('send-btn');
 
+const includeSentCheckbox = document.getElementById('include-sent');
+
 let selectedJobIds = new Set();
 let jobExperience = new Map(); // jobId -> experience requirement text, preserved across re-renders
 
@@ -22,9 +25,11 @@ let jobExperience = new Map(); // jobId -> experience requirement text, preserve
 searchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(searchForm);
+  const role = fd.get('role') || '';
   const keywords = fd.get('keywords') || '';
   const location = fd.get('location') || '';
   const experience = fd.get('experience') || '';
+  const includeSent = includeSentCheckbox.checked;
 
   searchMeta.textContent = 'Searching Adzuna, Reed and Jooble…';
   jobResults.innerHTML = '';
@@ -33,12 +38,16 @@ searchForm.addEventListener('submit', async (e) => {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keywords, location, experience }),
+      body: JSON.stringify({ role, keywords, location, experience, includeSent }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed.');
 
-    searchMeta.textContent = `${data.count} result(s). Check the ones you want to send.`;
+    let metaText = `${data.count} result(s). Check the ones you want to send.`;
+    if (data.skippedAlreadySent > 0) {
+      metaText += ` (${data.skippedAlreadySent} already-sent job(s) hidden — check "show already sent" to see them.)`;
+    }
+    searchMeta.textContent = metaText;
     renderJobResults(data.jobs);
   } catch (err) {
     searchMeta.textContent = err.message;
@@ -59,20 +68,28 @@ function renderJobResults(jobs) {
   }
   for (const job of jobs) {
     const li = document.createElement('li');
-    li.className = 'job selectable-job';
+    li.className = 'job selectable-job' + (job.alreadySent ? ' job-already-sent' : '');
     const savedExperience = jobExperience.get(job.id) || '';
     const descSnippet = truncate(job.description, 220);
     li.innerHTML = `
       <label class="job-select">
-        <input type="checkbox" data-id="${job.id}" ${selectedJobIds.has(job.id) ? 'checked' : ''} />
+        <input type="checkbox" data-id="${job.id}" ${selectedJobIds.has(job.id) ? 'checked' : ''} ${job.alreadySent ? 'disabled' : ''} />
         <span>
           <span class="job-title">${job.title}</span>
-          <a class="job-link" href="${job.url}" target="_blank" rel="noopener">View job ↗</a><br/>
+          <a class="job-link" href="${job.url}" target="_blank" rel="noopener">View job ↗</a>
+          ${job.alreadySent ? '<span class="already-sent-badge">Already sent</span>' : ''}<br/>
           <span class="job-meta"><span class="job-source">${job.source}</span>${job.company} — ${job.location || 'n/a'}</span>
           ${descSnippet ? `<p class="job-desc">${descSnippet}</p>` : ''}
         </span>
       </label>
-    
+      <input
+        type="text"
+        class="job-experience"
+        data-id="${job.id}"
+        placeholder="Experience required — e.g. 2-4 yrs (optional)"
+        value="${savedExperience.replace(/"/g, '&quot;')}"
+        ${job.alreadySent ? 'disabled' : ''}
+      />
     `;
     jobResults.appendChild(li);
   }
@@ -105,7 +122,7 @@ function renderRecipients(list) {
   for (const r of list) {
     const li = document.createElement('li');
     li.className = 'recipient';
-    li.innerHTML = `<span>${r.email}</span><button class="remove-recipient" data-email="${r.email}">&times;</button>`;
+    li.innerHTML = `<span>${r.name ? `<strong>${r.name}</strong> — ` : ''}${r.email}</span><button class="remove-recipient" data-email="${r.email}">&times;</button>`;
     recipientsList.appendChild(li);
   }
   recipientsList.querySelectorAll('.remove-recipient').forEach((btn) => {
@@ -118,34 +135,38 @@ function renderRecipients(list) {
 
 addSingleBtn.addEventListener('click', async () => {
   const email = singleEmailInput.value.trim();
+  const name = singleNameInput.value.trim();
   if (!email) return;
   const res = await fetch('/api/recipients', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, name }),
   });
   const data = await res.json();
   if (res.ok) {
     singleEmailInput.value = '';
+    singleNameInput.value = '';
     loadRecipients();
   } else {
     recipientsMeta.textContent = data.error;
   }
 });
 
-function parseEmailList(text) {
+function parseEntryList(text) {
+  // Split entries on newlines only — a comma within a line is reserved for
+  // the "email, name" pairing, not for separating entries from each other.
   return text
-    .split(/[\n,]/)
+    .split('\n')
     .map((e) => e.trim())
     .filter(Boolean);
 }
 
-async function bulkAdd(emails) {
-  if (emails.length === 0) return;
+async function bulkAdd(entries) {
+  if (entries.length === 0) return;
   const res = await fetch('/api/recipients/bulk', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ emails }),
+    body: JSON.stringify({ emails: entries }),
   });
   const data = await res.json();
   if (res.ok) {
@@ -157,8 +178,8 @@ async function bulkAdd(emails) {
 }
 
 addBulkBtn.addEventListener('click', () => {
-  const emails = parseEmailList(bulkEmailsInput.value);
-  bulkAdd(emails);
+  const entries = parseEntryList(bulkEmailsInput.value);
+  bulkAdd(entries);
   bulkEmailsInput.value = '';
 });
 
@@ -167,8 +188,8 @@ fileUpload.addEventListener('change', () => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
-    const emails = parseEmailList(String(reader.result));
-    bulkAdd(emails);
+    const entries = parseEntryList(String(reader.result));
+    bulkAdd(entries);
     fileUpload.value = '';
   };
   reader.readAsText(file);
@@ -212,8 +233,14 @@ sendForm.addEventListener('submit', async (e) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Send failed.');
 
-    sendStatus.textContent = `Sent to ${data.sent}/${data.recipientsTotal} recipients` +
-      (data.failed.length ? ` — ${data.failed.length} failed (see server logs).` : '.');
+    let statusMsg = `Sent to ${data.sent}/${data.recipientsTotal} recipients`;
+    if (data.alreadyCaughtUp > 0) {
+      statusMsg += ` — ${data.alreadyCaughtUp} already had every selected job, so skipped`;
+    }
+    if (data.failed.length > 0) {
+      statusMsg += ` — ${data.failed.length} failed (see server logs)`;
+    }
+    sendStatus.textContent = statusMsg + '.';
     sendStatus.className = data.failed.length ? 'form-status err' : 'form-status ok';
   } catch (err) {
     sendStatus.textContent = err.message;
