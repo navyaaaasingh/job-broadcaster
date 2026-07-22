@@ -25,7 +25,6 @@ let jobExperience = new Map(); // jobId -> experience requirement text, preserve
 searchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(searchForm);
-  const role = fd.get('role') || '';
   const keywords = fd.get('keywords') || '';
   const location = fd.get('location') || '';
   const experience = fd.get('experience') || '';
@@ -38,7 +37,7 @@ searchForm.addEventListener('submit', async (e) => {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, keywords, location, experience, includeSent }),
+      body: JSON.stringify({ keywords, location, experience, includeSent }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed.');
@@ -199,7 +198,6 @@ fileUpload.addEventListener('change', () => {
 
 sendForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const fd = new FormData(sendForm);
   const jobIds = [...selectedJobIds];
 
   if (jobIds.length === 0) {
@@ -226,8 +224,8 @@ sendForm.addEventListener('submit', async (e) => {
       body: JSON.stringify({
         jobIds,
         experience,
-        subject: fd.get('subject') || '',
-        message: fd.get('message') || '',
+        subject: '',
+        message: '',
       }),
     });
     const data = await res.json();
