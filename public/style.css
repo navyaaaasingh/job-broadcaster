@@ -374,3 +374,17 @@ button.ghost {
   color: var(--ink-soft);
   margin-left: 8px;
 }
+
+/* ---- Step 4: send-only card (no compose fields) ---- */
+
+#send-form {
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+#send-btn {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 13.5px;
+}
