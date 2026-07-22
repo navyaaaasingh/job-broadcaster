@@ -29,8 +29,7 @@
     <section class="card">
       <h2>1 &middot; 2 — Find &amp; select jobs</h2>
       <form id="search-form" class="inline-form">
-        <input type="text" name="role" placeholder="Job role — e.g. IT support" />
-        <input type="text" name="keywords" placeholder="Keywords — e.g. remote, urgent" />
+        <input type="text" name="keywords" placeholder="Keywords — e.g. IT support" />
         <input type="text" name="location" placeholder="Location — e.g. London" />
         <select name="experience">
           <option value="">Experience — any</option>
@@ -79,16 +78,8 @@
     </section>
 
     <section class="card">
-      <h2>4 — Compose &amp; send</h2>
+      <h2>4 — Send</h2>
       <form id="send-form">
-        <label>
-          Subject <span class="hint">optional — a default is used if blank</span>
-          <input type="text" name="subject" placeholder="This week's openings" />
-        </label>
-        <label>
-          Message <span class="hint">shown above the job list</span>
-          <textarea name="message" rows="3" placeholder="Hi all, here are this week's picks..."></textarea>
-        </label>
         <button type="submit" id="send-btn">Send to everyone on the list</button>
         <p class="form-status" id="send-status"></p>
       </form>
@@ -97,7 +88,7 @@
   </main>
 
   <footer class="foot">
-    Everyone on the recipient list gets the same subject and message — the job list itself is trimmed per person so no one ever receives the same posting twice.
+    Everyone on the recipient list gets the same email template — the job list itself is trimmed per person so no one ever receives the same posting twice.
   </footer>
 </div>
 
