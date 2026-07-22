@@ -18,7 +18,6 @@ const sendBtn = document.getElementById('send-btn');
 const includeSentCheckbox = document.getElementById('include-sent');
 
 let selectedJobIds = new Set();
-let jobExperience = new Map(); // jobId -> experience requirement text, preserved across re-renders
 
 // ---------- Step 1 & 2: search + select ----------
 
@@ -68,7 +67,6 @@ function renderJobResults(jobs) {
   for (const job of jobs) {
     const li = document.createElement('li');
     li.className = 'job selectable-job' + (job.alreadySent ? ' job-already-sent' : '');
-    const savedExperience = jobExperience.get(job.id) || '';
     const descSnippet = truncate(job.description, 220);
     li.innerHTML = `
       <label class="job-select">
@@ -81,14 +79,6 @@ function renderJobResults(jobs) {
           ${descSnippet ? `<p class="job-desc">${descSnippet}</p>` : ''}
         </span>
       </label>
-      <input
-        type="text"
-        class="job-experience"
-        data-id="${job.id}"
-        placeholder="Experience required — e.g. 2-4 yrs (optional)"
-        value="${savedExperience.replace(/"/g, '&quot;')}"
-        ${job.alreadySent ? 'disabled' : ''}
-      />
     `;
     jobResults.appendChild(li);
   }
@@ -96,11 +86,6 @@ function renderJobResults(jobs) {
     box.addEventListener('change', () => {
       if (box.checked) selectedJobIds.add(box.dataset.id);
       else selectedJobIds.delete(box.dataset.id);
-    });
-  });
-  jobResults.querySelectorAll('.job-experience').forEach((input) => {
-    input.addEventListener('input', () => {
-      jobExperience.set(input.dataset.id, input.value);
     });
   });
 }
@@ -210,20 +195,13 @@ sendForm.addEventListener('submit', async (e) => {
   sendStatus.textContent = 'Sending…';
   sendStatus.className = 'form-status';
 
-  // Only send experience notes for jobs that are actually selected.
-  const experience = {};
-  for (const id of jobIds) {
-    const text = jobExperience.get(id);
-    if (text && text.trim()) experience[id] = text.trim();
-  }
-
   try {
     const res = await fetch('/api/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jobIds,
-        experience,
+        experience: {},
         subject: '',
         message: '',
       }),
