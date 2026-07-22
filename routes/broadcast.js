@@ -89,11 +89,11 @@ router.get('/recipients', (req, res) => {
 });
 
 router.post('/recipients', (req, res) => {
-  const { email } = req.body || {};
+  const { email, name = '' } = req.body || {};
   if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'A valid email is required.' });
   }
-  const record = recipients.addRecipient(email);
+  const record = recipients.addRecipient(email, name);
   if (!record) return res.status(400).json({ error: 'Invalid email address.' });
   res.json({ ok: true, recipient: record });
 });
