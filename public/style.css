@@ -330,12 +330,6 @@ button.ghost {
 }
 .job-link:hover { text-decoration: underline; }
 
-.job-eligibility {
-  margin-top: 8px;
-  font-size: 13px !important;
-  padding: 6px 9px !important;
-}
-
 .job-desc {
   margin: 6px 0 0;
   font-size: 12.5px;
