@@ -20,8 +20,8 @@
   <div class="steps">
     <span class="step" data-step="1">1. Find jobs</span>
     <span class="step" data-step="2">2. Select jobs</span>
-   <!-- <span class="step" data-step="3">3. Recipients</span>
-    <span class="step" data-step="4">4. Send</span>-->
+    <span class="step" data-step="3">3. Recipients</span>
+    <span class="step" data-step="4">4. Send</span>
   </div>
 
   <main class="grid single">
@@ -29,7 +29,8 @@
     <section class="card">
       <h2>1 &middot; 2 — Find &amp; select jobs</h2>
       <form id="search-form" class="inline-form">
-        <input type="text" name="keywords" placeholder="Keywords — e.g. react developer" />
+        <input type="text" name="role" placeholder="Job role — e.g. IT support" />
+        <input type="text" name="keywords" placeholder="Keywords — e.g. remote, urgent" />
         <input type="text" name="location" placeholder="Location — e.g. London" />
         <select name="experience">
           <option value="">Experience — any</option>
@@ -42,22 +43,27 @@
         </select>
         <button type="submit">Search</button>
       </form>
+      <label class="check-inline">
+        <input type="checkbox" id="include-sent" />
+        Show jobs already sent before
+      </label>
       <p class="hint" id="search-meta">Search to see results here.</p>
       <ul id="job-results" class="jobs selectable"></ul>
     </section>
 
-   <!-- <section class="card">
+    <section class="card">
       <h2>3 — Recipients</h2>
 
       <div class="recipient-add">
+        <input type="text" id="single-name" placeholder="Name (optional)" />
         <input type="email" id="single-email" placeholder="add-one@example.com" />
         <button id="add-single" class="ghost">Add</button>
       </div>
 
       <div class="recipient-bulk">
         <label>
-          Paste a list <span class="hint">comma or newline separated</span>
-          <textarea id="bulk-emails" rows="3" placeholder="jane@example.com&#10;john@example.com"></textarea>
+          Paste a list <span class="hint">one per line — "email" or "email, name"</span>
+          <textarea id="bulk-emails" rows="3" placeholder="jane@example.com, Jane Doe&#10;john@example.com"></textarea>
         </label>
         <div class="bulk-actions">
           <button id="add-bulk" class="ghost">Add pasted list</button>
@@ -88,10 +94,10 @@
       </form>
     </section>
 
-  </main> -->
+  </main>
 
   <footer class="foot">
-    Everyone on the recipient list gets the exact same email — the same selected jobs, same subject, same message.
+    Everyone on the recipient list gets the same subject and message — the job list itself is trimmed per person so no one ever receives the same posting twice.
   </footer>
 </div>
 
