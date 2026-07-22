@@ -9,21 +9,33 @@ const { sendPersonalizedBroadcast } = require('../services/broadcastMailer');
 
 /**
  * Safety net on top of whatever matching each API does internally: only
- * keep a job if every word from the keyword search actually appears
- * (as a whole word, case-insensitive) in its title or description. This
- * catches cases where an API's own search is loose — e.g. matching "IT
- * support" against a driving job that just happens to mention "support"
- * somewhere, without actually being IT-related.
+ * keep a job if the keyword search actually appears as a PHRASE (words
+ * together, in order) in its title or description — not just as
+ * individual words scattered anywhere.
+ *
+ * Matching individual words separately was the earlier approach, but it
+ * let through false positives: e.g. a college lecturer posting that
+ * mentions "basic IT skills" in one sentence and "learning support" in
+ * another would satisfy "contains IT" AND "contains support" without the
+ * job having anything to do with IT support. Requiring the words to
+ * appear together as a phrase avoids that.
  */
-function jobMatchesAllKeywords(job, keywords) {
-  const terms = (keywords || '').trim().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return true;
+function jobMatchesKeywords(job, keywords) {
+  const phrase = (keywords || '').trim();
+  if (!phrase) return true;
 
   const haystack = `${job.title || ''} ${job.description || ''}`.toLowerCase();
-  return terms.every((term) => {
-    const escaped = term.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`\\b${escaped}\\b`, 'i').test(haystack);
-  });
+  const escapedWords = phrase
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+  // Words must appear in order, immediately adjacent — but allow flexible
+  // whitespace between them (a line break or double space in a job
+  // description shouldn't break an otherwise-exact phrase match).
+  const pattern = escapedWords.join('\\s+');
+  return new RegExp(`\\b${pattern}\\b`, 'i').test(haystack);
 }
 
 const router = express.Router();
@@ -54,10 +66,10 @@ router.post('/search', async (req, res) => {
     let jobs = [...byId.values()];
 
     // Apply our own relevance check on top of the APIs' own matching (see
-    // jobMatchesAllKeywords above) — deliberately checked against the
+    // jobMatchesKeywords above) — deliberately checked against the
     // original `keywords` only, not the experience-appended search string,
     // since experience phrasing won't always appear verbatim in a posting.
-    jobs = jobs.filter((job) => jobMatchesAllKeywords(job, keywords));
+    jobs = jobs.filter((job) => jobMatchesKeywords(job, keywords));
 
     // Filter out jobs that have already been sent to EVERY current
     // recipient — if even one person on the list hasn't received it yet,
