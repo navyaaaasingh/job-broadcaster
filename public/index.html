@@ -20,16 +20,17 @@
   <div class="steps">
     <span class="step" data-step="1">1. Find jobs</span>
     <span class="step" data-step="2">2. Select jobs</span>
-   <!-- <span class="step" data-step="3">3. Recipients</span>
+  <!--  <span class="step" data-step="3">3. Recipients</span>
     <span class="step" data-step="4">4. Send</span>
-  </div> -->
+  </div>-->
 
   <main class="grid single">
 
     <section class="card">
       <h2>1 &middot; 2 — Find &amp; select jobs</h2>
       <form id="search-form" class="inline-form">
-        <input type="text" name="keywords" placeholder="Keywords — e.g. IT support" />
+        <input type="text" name="role" placeholder="Job title/role — e.g. IT support" />
+        <input type="text" name="keywords" placeholder="Keywords — e.g. remote, urgent" />
         <input type="text" name="location" placeholder="Location — e.g. London" />
         <select name="experience">
           <option value="">Experience — any</option>
@@ -51,7 +52,7 @@
     </section>
 
    <!-- <section class="card">
-     <h2>3 — Recipients</h2>
+      <h2>3 — Recipients</h2>
 
       <div class="recipient-add">
         <input type="text" id="single-name" placeholder="Name (optional)" />
