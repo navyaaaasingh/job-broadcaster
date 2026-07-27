@@ -24,6 +24,7 @@ let selectedJobIds = new Set();
 searchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(searchForm);
+  const role = fd.get('role') || '';
   const keywords = fd.get('keywords') || '';
   const location = fd.get('location') || '';
   const experience = fd.get('experience') || '';
@@ -36,7 +37,7 @@ searchForm.addEventListener('submit', async (e) => {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keywords, location, experience, includeSent }),
+      body: JSON.stringify({ role, keywords, location, experience, includeSent }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed.');
@@ -61,7 +62,7 @@ function truncate(text, maxLen) {
 function renderJobResults(jobs) {
   jobResults.innerHTML = '';
   if (jobs.length === 0) {
-    jobResults.innerHTML = '<li class="empty">No results. Try different keywords or location.</li>';
+    jobResults.innerHTML = '<li class="empty">No results. Try a different job title, keywords, or location.</li>';
     return;
   }
   for (const job of jobs) {
