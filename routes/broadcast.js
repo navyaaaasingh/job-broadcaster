@@ -8,24 +8,19 @@ const sentJobs = require('../services/sentJobs');
 const { sendPersonalizedBroadcast } = require('../services/broadcastMailer');
 
 /**
- * Safety net on top of whatever matching each API does internally: only
- * keep a job if the keyword search actually appears as a PHRASE (words
- * together, in order) in its title or description — not just as
- * individual words scattered anywhere.
- *
- * Matching individual words separately was the earlier approach, but it
- * let through false positives: e.g. a college lecturer posting that
+ * Strict PHRASE match — used for the Job Title/Role field. Requires the
+ * words to appear together, in order, not just scattered independently
+ * anywhere in the text. This is what avoids false positives like a college
+ * lecturer posting matching "IT support" just because it separately
  * mentions "basic IT skills" in one sentence and "learning support" in
- * another would satisfy "contains IT" AND "contains support" without the
- * job having anything to do with IT support. Requiring the words to
- * appear together as a phrase avoids that.
+ * another — the role name should mean exactly what it says.
  */
-function jobMatchesKeywords(job, keywords) {
-  const phrase = (keywords || '').trim();
-  if (!phrase) return true;
+function jobMatchesPhrase(job, phrase) {
+  const clean = (phrase || '').trim();
+  if (!clean) return true;
 
   const haystack = `${job.title || ''} ${job.description || ''}`.toLowerCase();
-  const escapedWords = phrase
+  const escapedWords = clean
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
@@ -38,18 +33,100 @@ function jobMatchesKeywords(job, keywords) {
   return new RegExp(`\\b${pattern}\\b`, 'i').test(haystack);
 }
 
+/**
+ * Looser AND match — used for the general Keywords field. Each
+ * comma-or-space-separated term just needs to appear somewhere in the job
+ * (as a whole word), independently — good for extra qualifiers like
+ * "remote, urgent" where the terms aren't meant to form one phrase and
+ * don't need to relate to the job title itself.
+ */
+function jobMatchesKeywords(job, keywords) {
+  const terms = (keywords || '')
+    .split(/[,\n]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (terms.length === 0) return true;
+
+  const haystack = `${job.title || ''} ${job.description || ''}`.toLowerCase();
+  return terms.every((term) => {
+    const escaped = term.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`, 'i').test(haystack);
+  });
+}
+
+/**
+ * Experience-level synonym map — since most job postings don't literally
+ * write "0-1 years," they use phrases like "entry-level," "graduate," or
+ * "senior." Each bracket lists alternate phrasings that count as a match.
+ * Deliberately approximate: "senior" appears under both 5-8 and 8+ since
+ * postings rarely commit to an exact year range for senior roles — treat
+ * this as "roughly this level," not a precise cutoff.
+ */
+const EXPERIENCE_SYNONYMS = {
+  '0-1 years': ['0-1 year', '0-1 years', 'entry level', 'entry-level', 'graduate', 'no experience required', 'no experience necessary', 'fresher', 'trainee', 'apprentice'],
+  '1-2 years': ['1-2 year', '1-2 years', 'junior', 'early career'],
+  '2-3 years': ['2-3 year', '2-3 years', 'mid level', 'mid-level', 'intermediate'],
+  '3-5 years': ['3-5 year', '3-5 years', 'mid-senior', 'experienced'],
+  '5-8 years': ['5-8 year', '5-8 years', 'senior', 'experienced'],
+  '8+ years': ['8+ years', 'senior', 'lead', 'principal', 'director', 'head of', 'extensive experience'],
+};
+
+/**
+ * Phrases that mean a job explicitly states SOME experience level, across
+ * all brackets combined — used to detect "this posting doesn't mention
+ * experience at all" vs. "this posting specifies a level."
+ */
+const ALL_EXPERIENCE_PHRASES = Object.values(EXPERIENCE_SYNONYMS).flat();
+
+function textMentionsPhrase(haystack, phrase) {
+  const escapedWords = phrase
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const pattern = escapedWords.join('\\s+');
+  return new RegExp(`\\b${pattern}\\b`, 'i').test(haystack);
+}
+
+/**
+ * Experience filter: a job passes if EITHER (a) it matches the selected
+ * bracket's recognized phrasings, OR (b) it doesn't mention any
+ * experience-level language at all (across every bracket) — since an
+ * unspecified posting might genuinely fit, and hiding it entirely would
+ * be a false negative rather than a real mismatch. A job only gets
+ * excluded when it explicitly states a level that ISN'T the selected one.
+ * No experience bracket selected ("any") always passes everything.
+ */
+function jobMatchesExperience(job, experienceBracket) {
+  const clean = (experienceBracket || '').trim();
+  if (!clean) return true;
+
+  const synonyms = EXPERIENCE_SYNONYMS[clean];
+  if (!synonyms) return true; // unknown bracket value — don't filter on it
+
+  const haystack = `${job.title || ''} ${job.description || ''}`.toLowerCase();
+
+  const matchesSelectedBracket = synonyms.some((phrase) => textMentionsPhrase(haystack, phrase));
+  if (matchesSelectedBracket) return true;
+
+  const mentionsAnyExperience = ALL_EXPERIENCE_PHRASES.some((phrase) => textMentionsPhrase(haystack, phrase));
+  return !mentionsAnyExperience;
+}
+
 const router = express.Router();
 
 /** Step 1: find jobs — search Adzuna + Reed + Jooble, return normalized/deduped results. */
 router.post('/search', async (req, res) => {
-  const { keywords = '', location = '', experience = '', includeSent = false } = req.body || {};
+  const { role = '', keywords = '', location = '', experience = '', includeSent = false } = req.body || {};
 
-  // None of the three APIs expose a dedicated "years of experience" filter,
-  // so the most useful thing we can do with it is fold it into the free-text
-  // keyword search — e.g. "react developer" + "2-3 years" becomes
-  // "react developer 2-3 years", which biases results toward postings that
-  // mention that experience level in their title/description.
-  const searchKeywords = [keywords, experience].filter(Boolean).join(' ').trim();
+  // Deliberately NOT including `experience` in the query sent to the APIs.
+  // Adzuna's AND-mode search (what_and) requires every word to appear
+  // literally — appending "0-1 years" would require those exact tokens in
+  // a posting's own text, which would wipe out almost all real results at
+  // the source. Instead, experience is matched entirely on our side, via
+  // jobMatchesExperience below, against the synonym list — this catches
+  // "entry-level," "graduate," etc. that a literal search never would.
+  const searchKeywords = [role, keywords].filter(Boolean).join(' ').trim();
 
   try {
     const [adzuna, reed, jooble] = await Promise.all([
@@ -65,11 +142,16 @@ router.post('/search', async (req, res) => {
     }
     let jobs = [...byId.values()];
 
-    // Apply our own relevance check on top of the APIs' own matching (see
-    // jobMatchesKeywords above) — deliberately checked against the
-    // original `keywords` only, not the experience-appended search string,
-    // since experience phrasing won't always appear verbatim in a posting.
-    jobs = jobs.filter((job) => jobMatchesKeywords(job, keywords));
+    // Apply our own relevance checks on top of whatever each API matched
+    // internally: Job Title/Role must appear as an exact phrase; Keywords
+    // just need to each appear somewhere, independently; Experience must
+    // match one of the recognized phrasings for that bracket.
+    jobs = jobs.filter(
+      (job) =>
+        jobMatchesPhrase(job, role) &&
+        jobMatchesKeywords(job, keywords) &&
+        jobMatchesExperience(job, experience)
+    );
 
     // Filter out jobs that have already been sent to EVERY current
     // recipient — if even one person on the list hasn't received it yet,
