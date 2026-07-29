@@ -59,30 +59,61 @@ function truncate(text, maxLen) {
   return clean.length > maxLen ? clean.slice(0, maxLen).trim() + '…' : clean;
 }
 
+function buildJobItemHtml(job) {
+  const descSnippet = truncate(job.description, 220);
+  return `
+    <label class="job-select">
+      <input type="checkbox" data-id="${job.id}" ${selectedJobIds.has(job.id) ? 'checked' : ''} ${job.alreadySent ? 'disabled' : ''} />
+      <span>
+        <span class="job-title">${job.title}</span>
+        <a class="job-link" href="${job.url}" target="_blank" rel="noopener">View job ↗</a>
+        ${job.alreadySent ? '<span class="already-sent-badge">Already sent</span>' : ''}<br/>
+        <span class="job-meta"><span class="job-source">${job.source}</span>${job.company} — ${job.location || 'n/a'}</span>
+        ${descSnippet ? `<p class="job-desc">${descSnippet}</p>` : ''}
+      </span>
+    </label>
+  `;
+}
+
 function renderJobResults(jobs) {
   jobResults.innerHTML = '';
   if (jobs.length === 0) {
     jobResults.innerHTML = '<li class="empty">No results. Try a different job title, keywords, or location.</li>';
     return;
   }
-  for (const job of jobs) {
-    const li = document.createElement('li');
-    li.className = 'job selectable-job' + (job.alreadySent ? ' job-already-sent' : '');
-    const descSnippet = truncate(job.description, 220);
-    li.innerHTML = `
-      <label class="job-select">
-        <input type="checkbox" data-id="${job.id}" ${selectedJobIds.has(job.id) ? 'checked' : ''} ${job.alreadySent ? 'disabled' : ''} />
-        <span>
-          <span class="job-title">${job.title}</span>
-          <a class="job-link" href="${job.url}" target="_blank" rel="noopener">View job ↗</a>
-          ${job.alreadySent ? '<span class="already-sent-badge">Already sent</span>' : ''}<br/>
-          <span class="job-meta"><span class="job-source">${job.source}</span>${job.company} — ${job.location || 'n/a'}</span>
-          ${descSnippet ? `<p class="job-desc">${descSnippet}</p>` : ''}
-        </span>
-      </label>
-    `;
-    jobResults.appendChild(li);
+
+  const strongMatches = jobs.filter((j) => j.matchesKeywords !== false);
+  const weakMatches = jobs.filter((j) => j.matchesKeywords === false);
+  // Only worth splitting into two labeled groups if keywords were actually
+  // used AND there's something in both buckets — otherwise one plain list
+  // reads better than a group header with nothing to contrast against.
+  const showGrouped = weakMatches.length > 0 && strongMatches.length > 0;
+
+  function appendJobItems(jobList) {
+    for (const job of jobList) {
+      const li = document.createElement('li');
+      li.className = 'job selectable-job' + (job.alreadySent ? ' job-already-sent' : '');
+      li.innerHTML = buildJobItemHtml(job);
+      jobResults.appendChild(li);
+    }
   }
+
+  if (showGrouped) {
+    const strongHeader = document.createElement('li');
+    strongHeader.className = 'job-group-header';
+    strongHeader.textContent = `Matching your keywords (${strongMatches.length})`;
+    jobResults.appendChild(strongHeader);
+    appendJobItems(strongMatches);
+
+    const weakHeader = document.createElement('li');
+    weakHeader.className = 'job-group-header';
+    weakHeader.textContent = `Also matching the role, but not your keywords (${weakMatches.length})`;
+    jobResults.appendChild(weakHeader);
+    appendJobItems(weakMatches);
+  } else {
+    appendJobItems(jobs);
+  }
+
   jobResults.querySelectorAll('input[type="checkbox"]').forEach((box) => {
     box.addEventListener('change', () => {
       if (box.checked) selectedJobIds.add(box.dataset.id);
