@@ -142,16 +142,19 @@ router.post('/search', async (req, res) => {
     }
     let jobs = [...byId.values()];
 
-    // Apply our own relevance checks on top of whatever each API matched
-    // internally: Job Title/Role must appear as an exact phrase; Keywords
-    // just need to each appear somewhere, independently; Experience must
-    // match one of the recognized phrasings for that bracket.
-    jobs = jobs.filter(
-      (job) =>
-        jobMatchesPhrase(job, role) &&
-        jobMatchesKeywords(job, keywords) &&
-        jobMatchesExperience(job, experience)
-    );
+    // Job Title/Role and Experience stay as HARD filters — Role is what
+    // actually prevents false positives like a Lecturer posting matching
+    // "IT support" (see jobMatchesPhrase), and Experience follows the same
+    // "explicit contradiction excludes, unspecified passes" rule as before.
+    jobs = jobs.filter((job) => jobMatchesPhrase(job, role) && jobMatchesExperience(job, experience));
+
+    // Keywords is a SOFT filter: rather than hiding jobs that don't match,
+    // tag each one and let the frontend group/label them — a job that
+    // fits the role but not every keyword might still be worth seeing,
+    // rather than silently discarded. If no keywords were entered, every
+    // job trivially "matches" so grouping has no visible effect.
+    jobs = jobs.map((job) => ({ ...job, matchesKeywords: jobMatchesKeywords(job, keywords) }));
+    jobs.sort((a, b) => Number(b.matchesKeywords) - Number(a.matchesKeywords));
 
     // Filter out jobs that have already been sent to EVERY current
     // recipient — if even one person on the list hasn't received it yet,
